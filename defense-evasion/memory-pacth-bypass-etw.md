@@ -38,7 +38,7 @@
 
 ![](../.gitbook/assets/image%20%28118%29.png)
 
-一般windows api默认使用stdcall调用约定，即函数外平衡堆栈，以防万一我们确认一下，堆栈的平衡方式会决定我们的内存补丁写法。
+一般windows api默认使用stdcall\(x86\)调用约定，这里x64默认使用fastcall，即寄存器传参，被调用者清理堆栈，所以我们直接返回就好，以防万一我们确认一下，堆栈的平衡方式会决定我们的内存补丁写法\(这里之前看错了，把后面那个add rsp,58以为是函数内那个call的\)。
 
 ![](../.gitbook/assets/image%20%28123%29.png)
 
@@ -59,61 +59,6 @@
 由于ntdll在进程加载之初就已经导入，所以这里不需要短暂睡眠，直接挂起创建就行。
 
 ```text
-#include <Windows.h>
-#include <stdio.h>
-#include <Tlhelp32.h>
-
-DWORD WINAPI GetProcessIdByName(LPCTSTR lpszProcessName)
-{
-	HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-	if (hSnapshot == INVALID_HANDLE_VALUE)
-	{
-		return 0;
-	}
-
-	PROCESSENTRY32 pe;
-	pe.dwSize = sizeof pe;
-
-	if (Process32First(hSnapshot, &pe))
-	{
-		do {
-			if (lstrcmpi(lpszProcessName, pe.szExeFile) == 0)
-			{
-				CloseHandle(hSnapshot);
-				return pe.th32ProcessID;
-			}
-		} while (Process32Next(hSnapshot, &pe));
-	}
-
-	CloseHandle(hSnapshot);
-	return 0;
-}
-
-HANDLE WINAPI GetHandleByProcessId(DWORD dwProcessId, LPCTSTR lpszModule)
-
-{
-
-	HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, 5424);
-
-	if (hSnapshot != INVALID_HANDLE_VALUE) {
-		MODULEENTRY32 pe32;
-		pe32.dwSize = sizeof(MODULEENTRY32);
-		Module32First(hSnapshot, &pe32);
-
-		do
-		{
-			if (lstrcmpi(pe32.szModule, lpszModule) == 0)
-			{
-				CloseHandle(hSnapshot);
-				return pe32.hModule;
-
-			}
-		} while (Module32Next(hSnapshot, &pe32));
-	}
-	CloseHandle(hSnapshot);
-	return 0;
-
-}
 
 #include <Windows.h>
 #include <stdio.h>
